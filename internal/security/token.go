@@ -4,7 +4,7 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"github.com/golang-jwt/jwt"
-	"github.com/A113y3z0nm3/pet_project_short_url/internal/models"
+	"short_url/internal/models"
 	"time"
 )
 
