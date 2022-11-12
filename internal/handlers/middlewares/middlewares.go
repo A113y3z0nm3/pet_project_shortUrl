@@ -17,17 +17,19 @@ type tokenService interface {
 
 // Middlewares класс для работы с middlewares
 type Middlewares struct {
-	basicPassword string
-	tokenService  tokenService
-	log           *myLog.Log
+	basicPassword	string
+	key				string
+	tokenService 	tokenService
+	log          	*myLog.Log
 }
 
 // NewMiddlewares конструктор для Middlewares
-func NewMiddlewares(log *myLog.Log, service tokenService, basicPassword string) *Middlewares {
+func NewMiddlewares(log *myLog.Log, service tokenService, key, basicPassword string) *Middlewares {
 
 	return &Middlewares{
-		basicPassword: basicPassword,
-		tokenService:  service,
-		log:           log,
+		basicPassword:	basicPassword,
+		key:			key,
+		tokenService:	service,
+		log:			log,
 	}
 }

@@ -16,16 +16,16 @@ type getLinkResponse struct {
 }
 
 // GetLink Отдает ссылку и информацию о ней
-func (h *ManageHandler) GetLink(ctx *gin.Context) {
+func (h *LinkHandler) GetLink(ctx *gin.Context) {
 
 	// Получаем короткую ссылку из path
 	link := getLinkFromParam(ctx)
 
 	// Получаем информацию о пользователе
-	user := h.GetUserInfo(ctx)
-	if user.Err != nil {
+	_, err := h.GetUserInfo(ctx)
+	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": user.Err.Error(),
+			"error": err.Error(),
 		})
 
 		return

@@ -8,13 +8,13 @@ import (
 )
 
 // CreateCode Создает QR-код из ссылки
-func (h *ManageHandler) CreateCode(ctx *gin.Context) {
+func (h *LinkHandler) CreateCode(ctx *gin.Context) {
 
 	// Получаем информацию о пользователе
-	user := h.GetUserInfo(ctx)
-	if user.Err != nil {
+	_, err := h.GetUserInfo(ctx)
+	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": user.Err.Error(),
+			"error": err.Error(),
 		})
 
 		return

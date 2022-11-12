@@ -22,7 +22,7 @@ type createLinkResponse struct {
 }
 
 // CreateLink Создает ссылку
-func (h *ManageHandler) CreateLink(ctx *gin.Context) {
+func (h *LinkHandler) CreateLink(ctx *gin.Context) {
 
 	var req createLinkRequest
 
@@ -33,10 +33,10 @@ func (h *ManageHandler) CreateLink(ctx *gin.Context) {
 	}
 
 	// Получаем информацию о пользователе
-	user := h.GetUserInfo(ctx)
-	if user.Err != nil {
+	user, err := h.GetUserInfo(ctx)
+	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": user.Err.Error(),
+			"error": err.Error(),
 		})
 
 		return

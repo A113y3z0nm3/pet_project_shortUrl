@@ -39,15 +39,14 @@ type UserDB struct {
 	Username	string `json:"username"`
 	FirstName	string `json:"first_name"`
 	LastName	string `json:"last_name"`
-	Subscribe	string `json:"role"`
+	Subscribe	string `json:"sub"`
 	Password	string `json:"-"`
 }
 
 // JWTUserInfo список информации, которая будет представлена о пользователе в JWT
 type JWTUserInfo struct {
 	Username 	string		`json:"username"`
-	Subscribe	Subscribe	`json:"subscribe"`
-	Err			error
+	Subscribe	Subscribe	`json:"sub"`
 }
 
 // SignInUserDTO структура пользователя для слоя service
@@ -55,7 +54,7 @@ type SignInUserDTO struct {
 	Username	string		`json:"username"`
 	FirstName	string		`json:"first_name"`
 	LastName	string		`json:"last_name"`
-	Subscribe	Subscribe	`json:"role"`
+	Subscribe	Subscribe	`json:"sub"`
 	Password	string		`json:"-"`
 }
 
@@ -64,6 +63,6 @@ type SignUpUserDTO struct {
 	Username	string		`json:"username" bson:"username"`
 	FirstName	string		`json:"first_name" bson:"first_name"`
 	LastName	string		`json:"last_name" bson:"last_name"`
-	Subscribe	Subscribe	`json:"role" bson:"role"`
+	Subscribe	Subscribe	`json:"sub" bson:"sub"`
 	Password	string		`json:"-" bson:"password"`
 }

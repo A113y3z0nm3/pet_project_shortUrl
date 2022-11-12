@@ -8,13 +8,13 @@ import (
 )
 
 // DeleteLink Удаляет короткую ссылку
-func (h *ManageHandler) DeleteLink(ctx *gin.Context) {
+func (h *LinkHandler) DeleteLink(ctx *gin.Context) {
 
 	// Получаем информацию о пользователе
-	user := h.GetUserInfo(ctx)
-	if user.Err != nil {
+	user, err := h.GetUserInfo(ctx)
+	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": user.Err.Error(),
+			"error": err.Error(),
 		})
 
 		return
@@ -24,7 +24,7 @@ func (h *ManageHandler) DeleteLink(ctx *gin.Context) {
 	link := getLinkFromParam(ctx)
 
 	// Удаляем ссылку
-	err := h.manageService.DeleteLink(ctx, user.Username, link)
+	err = h.manageService.DeleteLink(ctx, user.Username, link)
 	if err != nil {
 		if err != redis.Nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{

@@ -56,3 +56,27 @@ func (r *PostgresqlUserRepository) CreateUser(ctx context.Context, user models.U
 
 	return nil
 }
+
+// AddSubPSQL Меняет роль пользователя на sub
+func (r *PostgresqlUserRepository) AddSubPSQL(ctx context.Context, user models.UserDB) error {
+	query := fmt.Sprintf("UPDATE %s SET username=$1, first_name=$2, last_name=$3, user_role=$4, password=$5 WHERE username=$6", r.table)
+
+	_, err := r.db.Exec(ctx, query, user.Username, user.FirstName, user.LastName, "sub", user.Password, user.Username)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// DeleteSubPSQL Меняет роль пользователя на default
+func (r *PostgresqlUserRepository) DeleteSubPSQL(ctx context.Context, user models.UserDB) error {
+	query := fmt.Sprintf("UPDATE %s SET username=$1, first_name=$2, last_name=$3, user_role=$4, password=$5 WHERE username=$6", r.table)
+
+	_, err := r.db.Exec(ctx, query, user.Username, user.FirstName, user.LastName, "default", user.Password, user.Username)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

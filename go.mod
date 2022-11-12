@@ -8,6 +8,7 @@ require (
 	github.com/go-playground/validator/v10 v10.10.0
 	github.com/go-redis/redis/v9 v9.0.0-rc.1
 	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/google/uuid v1.3.0
 	github.com/jackc/pgx/v5 v5.0.4
 	go.uber.org/zap v1.23.0
 	golang.org/x/crypto v0.1.0

@@ -34,15 +34,15 @@ type LinkService struct {
 }
 
 const (
-	DefaultLifeTime	= 12 * time.Hour	//
+	DefaultLifeTime	= 12 * time.Hour	// Время жизни ссылок по умолчанию
 
-	All    			= 50				//
-	SubAll 			= 100				//
+	All    			= 50				// Лимит кол-ва всех ссылок для обычного пользователя
+	SubAll 			= 100				// Лимит кол-ва всех ссылок для подписчика
 
-	Custom    		= 5					//
-	SubCustom 		= 15				//
+	Custom    		= 15				// Лимит кол-ва кастомных ссылок для обычного пользователя
+	SubCustom 		= 30				// Лимит кол-ва кастомных ссылок для подписчика
 
-	SubPerm			= 20				//
+	SubPerm			= 10				// Лимит кол-ва ссылок с безграничным сроком действия для подписчика
 )
 
 // NewLinkService Конструктор для ManageService
@@ -57,13 +57,13 @@ func NewLinkService(c *LinkServiceConfig) *LinkService {
 func (s *LinkService) CreateQR(ctx context.Context, url, link string) (barcode.Barcode, error) {
 
 	// Находим ссылку в БД
-	data, err := s.linkRepo.FindLink(ctx, link)
+	_, err := s.linkRepo.FindLink(ctx, link)
 	if err != nil {
 		return nil, err
 	}
 
 	// Создаем QR-код на основе короткой ссылки
-	qrCode, err := qr.Encode(data.Link, qr.M, qr.Auto)
+	qrCode, err := qr.Encode(url, qr.M, qr.Auto)
 	if err != nil {
 		return nil, err
 	}

@@ -6,15 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// getLinkFromParam Получает короткую ссылку из path
-func getLinkFromParam(ctx *gin.Context) string {
-	link := ctx.Param("link")
-
-	return link
-}
-
 // LinkRedirect Выполняет переадресацию на источник при переходе на короткую ссылку
-func (h *ManageHandler) LinkRedirect(ctx *gin.Context) {
+func (h *LinkHandler) LinkRedirect(ctx *gin.Context) {
 
 	// Получаем короткую ссылку
 	link := getLinkFromParam(ctx)

@@ -21,13 +21,13 @@ type getAllLinksResponse struct {
 }
 
 // GetAllLinks Отдает все ссылки пользователя
-func (h *ManageHandler) GetAllLinks(ctx *gin.Context) {
+func (h *LinkHandler) GetAllLinks(ctx *gin.Context) {
 
 	// Получаем информацию о пользователе
-	user := h.GetUserInfo(ctx)
-	if user.Err != nil {
+	user, err := h.GetUserInfo(ctx)
+	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": user.Err.Error(),
+			"error": err.Error(),
 		})
 
 		return
