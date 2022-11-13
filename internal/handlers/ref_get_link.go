@@ -22,7 +22,7 @@ func (h *LinkHandler) GetLink(ctx *gin.Context) {
 	link := getLinkFromParam(ctx)
 
 	// Получаем информацию о пользователе
-	_, err := h.GetUserInfo(ctx)
+	_, err := h.middleware.GetUserInfo(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),

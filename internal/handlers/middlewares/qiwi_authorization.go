@@ -19,6 +19,8 @@ func (m *Middlewares) QiwiAuthorization(ctx *gin.Context) {
 	// Извлекаем параметры запроса из контекста
 	ctxparams, ok := ctx.Get("p2pParams")
 	if !ok {
+		// log
+
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": "failed to parse req params",
 		})
@@ -32,6 +34,8 @@ func (m *Middlewares) QiwiAuthorization(ctx *gin.Context) {
 	// Извлекаем заголовок из контекста
 	ctxheader, ok := ctx.Get("api_signature")
 	if !ok {
+		// log
+
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": "failed to parse api_signature",
 		})
@@ -48,6 +52,8 @@ func (m *Middlewares) QiwiAuthorization(ctx *gin.Context) {
 	// Хешируем параметры
 	_, err := hash.Write([]byte(params))
 	if err != nil {
+		// log
+
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
@@ -60,6 +66,8 @@ func (m *Middlewares) QiwiAuthorization(ctx *gin.Context) {
 	// Сравниваем полученную строку с заголовком
 	str := string(hash.Sum(nil))
 	if header != str {
+		// log
+
 		ctx.JSON(http.StatusUnauthorized, gin.H{
 			"error": "authorization failed",
 		})

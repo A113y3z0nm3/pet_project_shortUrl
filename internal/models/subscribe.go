@@ -1,8 +1,12 @@
 package models
 
-import "time"
+import (
+	"time"
 
-// Стоимость подписок
+	"github.com/robfig/cron/v3"
+)
+
+// SubPrice Стоимость подписок
 type SubPrice struct {
 	// Недельная
 	Weekly float64
@@ -12,8 +16,14 @@ type SubPrice struct {
 	Yearly float64
 }
 
-// Структура с информацией о приобретенной пользователем подпиской
+// SubInfo Структура с информацией о приобретенной пользователем подпиской
 type SubInfo struct {
 	Username	string
 	Exp			time.Duration
+}
+
+// CurrentSub Структура с информацией о текущей подписке пользователя
+type CurrentSub struct {
+	Exp		time.Duration
+	RemId	[]cron.EntryID
 }

@@ -2,7 +2,7 @@ package security
 
 import (
 	"crypto/rsa"
-	"fmt"
+	"errors"
 	"github.com/golang-jwt/jwt"
 	"short_url/internal/models"
 	"time"
@@ -50,13 +50,13 @@ func ValidateAccessToken(tokenString string, key *rsa.PublicKey) (*AccessTokenCu
 	}
 
 	if !token.Valid {
-		return nil, fmt.Errorf("access token is invalid")
+		return nil, errors.New("access token is invalid")
 	}
 
 	claims, ok := token.Claims.(*AccessTokenCustomClaims)
 
 	if !ok {
-		return nil, fmt.Errorf("access token valid but couldn't parse claims")
+		return nil, errors.New("access token valid but couldn't parse claims")
 	}
 
 	return claims, nil

@@ -49,7 +49,6 @@ type qiwiCheckRequest struct {
 
 // getApiSignatureFromCtx берет из контекста заголовок api_signature для авторизации
 func getApiSignatureFromCtx(ctx *gin.Context) string {
-
 	return ctx.Request.Header.Get("X-Api-Signature-SHA256")
 }
 
@@ -73,14 +72,10 @@ func (h *PayHandler) QiwiNotify(ctx *gin.Context) {
 	ctx.Set("api_signature", api_signature)
 	ctx.Next()
 
-	//
-	info, err := h.payService.CalculateSub(req.Bill.Amount.Value, username)
-	if err != nil {
-
+	// Если счет уже не в статусе ожидания, обрабатываем результат счета
+	if req.Bill.Status.Value != "WAITING" {
+		h.qiwiService.NotifyFromQiwi(ctx, req.Bill.Status.Value, req.Bill.BillID)
 	}
-
-	// Сохраняем Id счета в кэш сервиса для дальнейших проверок статуса
-	h.payService.SaveBillId(req.Bill.BillID, info)
 
 	// Отправляем серверу qiwi ответ об успешной обработке уведомления
 	ctx.JSON(http.StatusOK, gin.H{

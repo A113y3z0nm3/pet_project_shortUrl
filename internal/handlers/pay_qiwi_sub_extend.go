@@ -7,18 +7,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// QiwiSub Создает счет в QIWI P2P для покупки подписки
-func (h *PayHandler) QiwiSub(ctx *gin.Context) {
+// QiwiSubExtend Создает счет в QIWI P2P для продления подписки
+func (h *PayHandler) QiwiSubExtend(ctx *gin.Context) {
 	// Получаем информацию о пользователе
 	user, err := h.middleware.GetUserInfo(ctx)
 	if err != nil {
 		//
 	}
 
-	// Если пользователь подписчик, закрываем ручку и отдаем ответ
-	if user.Subscribe == models.Sub {
-		ctx.JSON(http.StatusOK, gin.H{
-			"error": "the user already has a subscribe",
+	// Если пользователь не подписчик, закрываем ручку и отдаем ответ
+	if user.Subscribe != models.Sub {
+		ctx.JSON(http.StatusForbidden, gin.H{
+			"error": "user does not have a subscribe",
 		})
 	}
 

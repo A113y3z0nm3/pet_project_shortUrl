@@ -12,25 +12,18 @@ import (
 	"github.com/boombuler/barcode/qr"
 )
 
-// linkRepository Интерфейс к репозиторию управления ссылками
-type linkRepository interface {
-	CreateLink(ctx context.Context, link, username, fullUrl string, exp time.Duration, custom bool) (models.LinkDataDB, error)
-	DeleteLink(ctx context.Context, link, username string) error
-	FindLink(ctx context.Context, link string) (models.LinkDataDB, error)
-	CountLinks(ctx context.Context, username string) (models.LinksAmount, error)
-	GetAllLinks(ctx context.Context, username string) ([]models.LinkDataDB, error)
-}
-
 // LinkServiceConfig Конфигурация для LinkService
 type LinkServiceConfig struct {
-	LinkRepo linkRepository
-	Logger   *myLog.Log
+	LinkRepo	linkRepository
+	CronCache	cronCache
+	Logger		*myLog.Log
 }
 
 // LinkService Управляет взаимодействием с ссылками
 type LinkService struct {
-	linkRepo linkRepository
-	logger   *myLog.Log
+	linkRepo 	linkRepository
+	cronCache	cronCache
+	logger   	*myLog.Log
 }
 
 const (
@@ -48,8 +41,9 @@ const (
 // NewLinkService Конструктор для ManageService
 func NewLinkService(c *LinkServiceConfig) *LinkService {
 	return &LinkService{
-		linkRepo: c.LinkRepo,
-		logger:   c.Logger,
+		linkRepo:	c.LinkRepo,
+		cronCache:	c.CronCache,
+		logger:		c.Logger,
 	}
 }
 
@@ -181,6 +175,10 @@ func (s *LinkService) CreateLink(ctx context.Context, fullUrl, custom string, ex
 	data, err := s.linkRepo.CreateLink(ctx, link, user.Username, fullUrl, time.Duration(exp), isCustom)
 	if err != nil {
 		return models.LinkDataDTO{}, err
+	}
+
+	if exp != 0 {
+		s.cronCache.CleaningExpLinkSchedule(ctx, link, user.Username, time.Duration(exp))
 	}
 
 	// Маппим данные в ответ

@@ -13,7 +13,6 @@ type signUpRequest struct {
 	Username	string				`json:"username" binding:"required"`
 	FirstName	string				`json:"first_name" binding:"required"`
 	LastName	string				`json:"last_name" binding:"required"`
-	Subscribe	models.Subscribe	`json:"role" binding:"required,gte=0,lte=2"`
 	Password	string				`json:"password" binding:"required,gte=6,lte=30"`
 }
 
@@ -39,7 +38,6 @@ func (h *AuthHandler) SignUp(ctx *gin.Context) {
 		Password:	req.Password,
 		LastName:	req.LastName,
 		FirstName:	req.FirstName,
-		Subscribe:	req.Subscribe,
 	})
 
 	// Обрабатываем ошибки

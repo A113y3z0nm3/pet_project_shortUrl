@@ -59,14 +59,14 @@ func (h *AuthHandler) SignIn(ctx *gin.Context) {
 
 		if err.Error() == "invalid password" {
 			ctx.JSON(http.StatusUnauthorized, gin.H{
-				"error": fmt.Sprintf("Invalid password"),
+				"error": "Invalid password",
 			})
 
 			return
 		}
 
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": fmt.Sprintf("Internal server error"),
+			"error": "Internal server error",
 		})
 
 		return
@@ -79,7 +79,7 @@ func (h *AuthHandler) SignIn(ctx *gin.Context) {
 	})
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": fmt.Sprintf("Internal server error"),
+			"error": "Internal server error",
 		})
 
 		return

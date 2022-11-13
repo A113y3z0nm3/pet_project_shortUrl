@@ -19,7 +19,7 @@ func (m *Middlewares) AuthUser(ctx *gin.Context) {
 
 	// bind Authorization Header to h and check for validation errors
 	if err := ctx.ShouldBindHeader(&h); err != nil {
-		m.log.Error("middleware: bad auth-header values")
+		m.logger.Error("middleware: bad auth-header values")
 
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error": "bad header values",
@@ -31,7 +31,7 @@ func (m *Middlewares) AuthUser(ctx *gin.Context) {
 
 	tokenHeader := strings.Split(h.Token, "Bearer ")
 	if len(tokenHeader) < 2 {
-		m.log.Error("middleware: invalid token header format")
+		m.logger.Error("middleware: invalid token header format")
 
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error": "must provide Authorization header with format `Bearer {token}`",
@@ -44,7 +44,7 @@ func (m *Middlewares) AuthUser(ctx *gin.Context) {
 	// validate ID token here
 	info, err := m.tokenService.ValidateToken(ctx, tokenHeader[1])
 	if err != nil {
-		m.log.Error("middleware: invalid auth token")
+		m.logger.Error("middleware: invalid auth token")
 
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error": "provided token is invalid",

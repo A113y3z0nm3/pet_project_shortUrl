@@ -10,13 +10,14 @@ import (
 
 // RedisLinkRepositoryConfig Конфигурация для RedisLinkRepository
 type RedisLinkRepositoryConfig struct {
-	DB		*redis.Client
+	DB			*redis.Client
+	Pipe		redis.Pipeliner
 }
 
 // RedisLinkRepository Слой для управления запросами к хранилищу ссылок
 type RedisLinkRepository struct {
-	db		*redis.Client
-	pipe 	redis.Pipeliner
+	db			*redis.Client
+	pipe		redis.Pipeliner
 }
 
 // Структура для записи в таблицу ссылок
@@ -30,14 +31,10 @@ const (
 
 // NewRedisLinkRepository Конструктор для RedisLinkRepository
 func NewRedisLinkRepository(c *RedisLinkRepositoryConfig) *RedisLinkRepository {
-	redisRepo := &RedisLinkRepository{
-		db:		c.DB,
+	return &RedisLinkRepository{
+		db:			c.DB,
+		pipe: 		c.Pipe,
 	}
-
-	// Инициализируем пайплайн (выполняет несколько команд за одну запись)
-	redisRepo.pipe = redisRepo.db.Pipeline()
-
-	return redisRepo
 }
 
 // CreateLinkTimed Создает ссылку в таблицах
@@ -78,7 +75,27 @@ func (r *RedisLinkRepository) CreateLink(ctx context.Context, link, username, fu
 	}, nil
 }
 
-// DeleteLink Удаляет записи из таблицы
+// DeleteExpLink Метод для удаления просроченных ссылок
+func (r *RedisLinkRepository) DeleteExpLink(ctx context.Context, link, username string) error {
+
+	metaLink := "meta-" + link
+
+	// Удаляем метаданные из таблицы ссылок
+	_, err := r.pipe.Del(ctx, metaLink).Result()
+	if err != nil {
+		return err
+	}
+
+	// Удаляем ссылку из таблицы пользователя
+	_, err = r.pipe.SRem(ctx, username, link).Result()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// DeleteLink Удаляет записи из хранилища
 func (r *RedisLinkRepository) DeleteLink(ctx context.Context, link, username string) error {
 
 	metaLink := "meta-" + link

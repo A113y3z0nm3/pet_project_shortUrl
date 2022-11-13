@@ -3,36 +3,32 @@ package services
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/jackc/pgx/v5"
 	"short_url/internal/models"
 	"short_url/internal/security"
 	myLog "short_url/pkg/logger"
 )
 
-// authRepository Интерфейс к репозиторию хранения данных пользователей
-type authRepository interface {
-	FindByUsername(ctx context.Context, name string) (models.UserDB, error)
-	CreateUser(ctx context.Context, user models.UserDB) error
-}
-
 // AuthServiceConfig Конфигурация к AuthService
 type AuthServiceConfig struct {
-	AuthRepo authRepository
-	Logger   *myLog.Log
+	AuthRepo	authRepository
+	SubRepo		subRepository
+	Logger		*myLog.Log
 }
 
 // AuthService Управляет регистрацией и аутентификацией пользователей
 type AuthService struct {
-	authRepo authRepository
-	logger   *myLog.Log
+	authRepo	authRepository
+	subRepo		subRepository
+	logger		*myLog.Log
 }
 
 // Конструктор для AuthService
 func NewAuthService(c *AuthServiceConfig) *AuthService {
 	return &AuthService{
-		authRepo: c.AuthRepo,
-		logger:   c.Logger,
+		authRepo:	c.AuthRepo,
+		subRepo:	c.SubRepo,
+		logger:		c.Logger,
 	}
 }
 
@@ -60,13 +56,21 @@ func (s *AuthService) SignInUserByName(ctx context.Context, dto models.SignInUse
 		return dto, err
 	}
 	if !ok {
-		return dto, fmt.Errorf("invalid password")
+		return dto, errors.New("invalid password")
+	}
+
+	// Проверяем, есть ли у пользователя подписка
+	_, ok = s.subRepo.FindByUsername(ctx, dto.Username)
+	if ok {
+		dto.Subscribe	= 1
+	} else {
+		dto.Subscribe	= 2
 	}
 
 	// Мапим данные из db в dto структуру
 	dto.FirstName	= u.FirstName
 	dto.LastName	= u.LastName
-	dto.Subscribe	= dto.Subscribe.ChoiceSubscribe(u.Subscribe)
+	
 
 	return dto, nil
 }
@@ -90,7 +94,7 @@ func (s *AuthService) SignUpUser(ctx context.Context, dto models.SignUpUserDTO) 
 			return err
 		}
 	} else {
-		return fmt.Errorf("user exist")
+		return errors.New("user exist")
 	}
 
 	// Хешируем пароль
@@ -107,7 +111,6 @@ func (s *AuthService) SignUpUser(ctx context.Context, dto models.SignUpUserDTO) 
 		FirstName:	dto.FirstName,
 		LastName:	dto.LastName,
 		Password:	hashPassword,
-		Subscribe:	dto.Subscribe.ChoiceString(),
 	})
 	if err != nil {
 		l.Errorf("unable to create user. Err: %e", err)

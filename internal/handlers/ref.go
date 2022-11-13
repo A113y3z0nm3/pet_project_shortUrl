@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"short_url/internal/handlers/middlewares"
 	"short_url/internal/models"
 	myLog "short_url/pkg/logger"
@@ -11,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// manageService Интерфейс к сервису, осуществляющему управление пользователя ссылками
+// linkService Интерфейс к сервису, осуществляющему управление пользователя ссылками
 type linkService interface {
 	FindLink(ctx context.Context, link string) (models.LinkDataDTO, error)
 	GetAllLinks(ctx context.Context, username string) ([]models.LinkDataDTO, error)
@@ -20,7 +19,7 @@ type linkService interface {
 	CreateQR(ctx context.Context, url, link string) (barcode.Barcode, error)
 }
 
-// ManageHandlerConfig Конфигурация для ManageHandler
+// LinkHandlerConfig Конфигурация для LinkHandler
 type LinkHandlerConfig struct {
 	Router        *gin.Engine
 	ManageService linkService
@@ -28,7 +27,7 @@ type LinkHandlerConfig struct {
 	Logger			*myLog.Log
 }
 
-// ManageHandler Для логирования и регистрации хендлеров
+// LinkHandler Для логирования и регистрации хендлеров
 type LinkHandler struct {
 	manageService linkService
 	middleware		*middlewares.Middlewares
@@ -42,30 +41,8 @@ func getLinkFromParam(ctx *gin.Context) string {
 	return link
 }
 
-// GetUserInfo Возвращает информацию о пользователе и его подписке из контекста
-func (h *LinkHandler) GetUserInfo(ctx *gin.Context) (models.JWTUserInfo, error) {
-
-	// Получаем данные из контекста
-	info, ok := ctx.Get(middlewares.UserInfo)
-	if !ok {
-		h.logger.Error("failed to get user info from ctx")
-
-		return models.JWTUserInfo{}, errors.New("failed to get user info")
-	}
-
-	// Преобразуем их в структуру для ответа
-	user, ok := info.(models.JWTUserInfo)
-	if !ok {
-		h.logger.Error("failed to get JWT user info")
-
-		return models.JWTUserInfo{}, errors.New("failed to JWT user info")
-	}
-
-	return user, nil
-}
-
-// RegisterManageHandler Фабрика для ManageHandler
-func RegisterManageHandler(c *LinkHandlerConfig) {
+// RegisterLinkHandler Фабрика для LinkHandler
+func RegisterLinkHandler(c *LinkHandlerConfig) {
 	linkHandler := LinkHandler{
 		manageService: c.ManageService,
 		middleware:		c.Middlware,

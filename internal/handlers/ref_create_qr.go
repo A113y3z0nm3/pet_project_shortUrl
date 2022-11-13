@@ -11,7 +11,7 @@ import (
 func (h *LinkHandler) CreateCode(ctx *gin.Context) {
 
 	// Получаем информацию о пользователе
-	_, err := h.GetUserInfo(ctx)
+	_, err := h.middleware.GetUserInfo(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),

@@ -11,7 +11,7 @@ import (
 func (h *LinkHandler) DeleteLink(ctx *gin.Context) {
 
 	// Получаем информацию о пользователе
-	user, err := h.GetUserInfo(ctx)
+	user, err := h.middleware.GetUserInfo(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
