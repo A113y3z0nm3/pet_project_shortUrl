@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
-	"log"
 	"net/http"
 	"short_url/internal/models"
-	myLog "short_url/pkg/logger"
+	log "short_url/pkg/logger"
 )
 
 // Структура запроса
@@ -25,17 +24,17 @@ type signInResponse struct {
 
 // SignIn метод AuthService для выполнения входа
 func (h *AuthHandler) SignIn(ctx *gin.Context) {
-	ctxLog := myLog.ContextWithSpan(ctx, "SignIn")
+	ctxLog := log.ContextWithSpan(ctx, "SignInHandler")
 	l := h.logger.WithContext(ctxLog)
 
-	l.Debug("SignIn() started")
-	defer l.Debug("SignIn() done")
+	l.Debug("SignInHandler() started")
+	defer l.Debug("SignInHandler() done")
 
 	var req signInRequest
 
 	// Если данные не прошли валидацию, то просто выходим из "ручки", т.к. в bindData уже записана ошибка
 	// через ctx.JSON...
-	if ok := bindData(ctx, &req); !ok {
+	if ok := bindData(ctx, l, &req, "POST", MetricSignIn); !ok {
 		return
 	}
 
@@ -47,12 +46,12 @@ func (h *AuthHandler) SignIn(ctx *gin.Context) {
 
 	// Обрабатываем ошибки
 	if err != nil {
-		log.Println(err)
-
 		if errors.Is(err, pgx.ErrNoRows) {
 			ctx.JSON(http.StatusNotFound, gin.H{
 				"error": fmt.Sprintf("user with username=%s not found", req.Username),
 			})
+
+			Bridge(ctx, http.StatusNotFound, "POST", MetricSignIn)
 
 			return
 		}
@@ -62,12 +61,14 @@ func (h *AuthHandler) SignIn(ctx *gin.Context) {
 				"error": "Invalid password",
 			})
 
+			Bridge(ctx, http.StatusUnauthorized, "POST", MetricSignIn)
+
 			return
 		}
 
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Internal server error",
-		})
+		InternalErrResp(ctx, l, err)
+
+		Bridge(ctx, http.StatusInternalServerError, "POST", MetricSignIn)
 
 		return
 	}
@@ -78,9 +79,9 @@ func (h *AuthHandler) SignIn(ctx *gin.Context) {
 		Subscribe:	u.Subscribe,
 	})
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Internal server error",
-		})
+		InternalErrResp(ctx, l, err)
+
+		Bridge(ctx, http.StatusInternalServerError, "POST", MetricSignIn)
 
 		return
 	}
@@ -90,6 +91,8 @@ func (h *AuthHandler) SignIn(ctx *gin.Context) {
 		AccessToken: token,
 		Username:    u.Username,
 	})
+
+	Bridge(ctx, http.StatusOK, "POST", MetricSignIn)
 
 	return
 }

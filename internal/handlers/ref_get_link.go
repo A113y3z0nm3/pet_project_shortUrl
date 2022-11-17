@@ -3,6 +3,8 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"short_url/internal/handlers/middlewares"
+	log "short_url/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v9"
@@ -10,40 +12,43 @@ import (
 
 // getLinkResponse Ответ на запрос
 type getLinkResponse struct {
-	Short   string
-	Full    string
-	ExpTime string
+	Short   string	`json:"short"`
+	Full    string	`json:"full"`
+	ExpTime string	`json:"time"`
 }
 
 // GetLink Отдает ссылку и информацию о ней
 func (h *LinkHandler) GetLink(ctx *gin.Context) {
+	ctxLog := log.ContextWithSpan(ctx, "GetLinkHandler")
+	l := h.logger.WithContext(ctxLog)
+
+	l.Debug("GetLinkHandler() started")
+	defer l.Debug("GetLinkHandler() done")
+
+	// Если был получен сигнал пропускаем ручку для обработки метрик
+	_, ok := ctx.Get(middlewares.Skip) 
+	if ok {
+		ctx.Next()
+	}
 
 	// Получаем короткую ссылку из path
 	link := getLinkFromParam(ctx)
 
-	// Получаем информацию о пользователе
-	_, err := h.middleware.GetUserInfo(ctx)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
-
-		return
-	}
-
 	// Ищем данные связанные с этой ссылкой, проверяем валидность
-	data, err := h.manageService.FindLink(ctx, link)
+	data, err := h.linkService.FindLink(ctx, link)
 	if err != nil {
 		if err != redis.Nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"error": "internal server error",
-			})
+			InternalErrResp(ctx, l, err)
+
+			Bridge(ctx, http.StatusInternalServerError, "GET", MetricGetLink)
 
 			return
 		} else {
 			ctx.JSON(http.StatusNotFound, gin.H{
 				"error": "link not found",
 			})
+
+			Bridge(ctx, http.StatusNotFound, "GET", MetricGetLink)
 
 			return
 		}
@@ -57,6 +62,8 @@ func (h *LinkHandler) GetLink(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, resp)
+
+	Bridge(ctx, http.StatusOK, "GET", MetricGetLink)
 
 	return
 }

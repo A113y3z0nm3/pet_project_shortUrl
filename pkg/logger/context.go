@@ -1,4 +1,4 @@
-package myLog
+package log
 
 import (
 	"context"
@@ -30,20 +30,20 @@ type ContextInfo struct {
 	ParentSpanID string `json:"parent_span_id"`
 }
 
-//
+// ContextWithTrace
 func ContextWithTrace(ctx context.Context, trace string) context.Context {
 	ctx = context.WithValue(ctx, TraceID{}, trace)
 	return ctx
 }
 
-//
+// ContextWithSpan
 func ContextWithSpan(ctx context.Context, span string) context.Context {
 	ctx = contextWithParentSpan(ctx)
 	ctx = context.WithValue(ctx, SpanID{}, span)
 	return ctx
 }
 
-//
+// contextWithParentSpan
 func contextWithParentSpan(ctx context.Context) context.Context {
 	span, ok := ctx.Value(SpanID{}).(string)
 	if !ok {
@@ -59,7 +59,7 @@ func contextWithParentSpan(ctx context.Context) context.Context {
 	return ctx
 }
 
-// Берет информацию из контекста
+// getFromContext Берет информацию из контекста
 func getFromContext(ctx context.Context) *ContextInfo {
 	traceID, _ := ctx.Value(TraceID{}).(string)
 	spanID, _ := ctx.Value(SpanID{}).(string)
@@ -72,7 +72,7 @@ func getFromContext(ctx context.Context) *ContextInfo {
 	}
 }
 
-// 
+// MarshalLogObject Записывает ключи в JSON объект
 func (c *ContextInfo) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 	enc.AddString(traceStr, c.TraceID)
 	enc.AddString(spanStr, c.SpanID)

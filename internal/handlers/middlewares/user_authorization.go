@@ -1,14 +1,24 @@
 package middlewares
 
 import (
-	"github.com/gin-gonic/gin"
+	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/gin-gonic/gin"
 )
 
 // authHeader Структура для заголовка авторизации
 type authHeader struct {
 	Token string `header:"Authorization"`
+}
+
+// metricSet Отправляет метрики из middleware, если по каким-то ошибкам был пропущен основной обработчик
+func metricSet(ctx *gin.Context, code int) {
+	ctx.Set(Handler, MidAuth)
+	ctx.Set(Method, MidAuth)
+	ctx.Set(Code, fmt.Sprint(code))
+	ctx.Set(Skip, "true")
 }
 
 // AuthUser извлекает пользователя из заголовка Authorization.
@@ -19,38 +29,35 @@ func (m *Middlewares) AuthUser(ctx *gin.Context) {
 
 	// bind Authorization Header to h and check for validation errors
 	if err := ctx.ShouldBindHeader(&h); err != nil {
-		m.logger.Error("middleware: bad auth-header values")
-
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error": "bad header values",
 		})
 
-		ctx.Abort()
+		metricSet(ctx, http.StatusBadRequest)
+
 		return
 	}
 
 	tokenHeader := strings.Split(h.Token, "Bearer ")
 	if len(tokenHeader) < 2 {
-		m.logger.Error("middleware: invalid token header format")
-
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error": "must provide Authorization header with format `Bearer {token}`",
 		})
 
-		ctx.Abort()
+		metricSet(ctx, http.StatusBadRequest)
+
 		return
 	}
 
 	// validate ID token here
 	info, err := m.tokenService.ValidateToken(ctx, tokenHeader[1])
 	if err != nil {
-		m.logger.Error("middleware: invalid auth token")
-
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"error": "provided token is invalid",
 		})
 
-		ctx.Abort()
+		metricSet(ctx, http.StatusBadRequest)
+
 		return
 	}
 

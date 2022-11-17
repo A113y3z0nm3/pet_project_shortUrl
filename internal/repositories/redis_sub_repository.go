@@ -9,7 +9,7 @@ import (
 
 // RedisSubRepositoryConfig Конфигурация для RedisLinkRepository
 type RedisSubRepositoryConfig struct {
-	Db		*redis.Client
+	DB		*redis.Client
 	Pipe	redis.Pipeliner
 }
 
@@ -22,13 +22,13 @@ type RedisSubRepository struct {
 // NewRedisSubRepository Конструктор для RedisSubRepository
 func NewRedisSubRepository(c *RedisSubRepositoryConfig) *RedisSubRepository {
 	return &RedisSubRepository{
-		db:		c.Db,
+		db:		c.DB,
 		pipe:	c.Pipe,
 	}
 }
 
 // FindByUsername Находит подписку и ее срок по имени пользователя
-func (r *RedisSubRepository) FindByUsername(ctx context.Context, username string) (time.Duration, bool) {
+func (r *RedisSubRepository) FindSubscribe(ctx context.Context, username string) (time.Duration, bool) {
 	// Ищем в базе информацию о подписке
 	_, err := r.db.Get(ctx, username).Result()
 	if err != nil {

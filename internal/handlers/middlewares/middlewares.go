@@ -2,38 +2,23 @@ package middlewares
 
 import (
 	"context"
-	"errors"
 	"short_url/internal/models"
-	myLog "short_url/pkg/logger"
+	log "short_url/pkg/logger"
 
-	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
+// Ключи для контекста
 const (
-	UserInfo	= "user_info"	// Ключ для контекста (информация о пользователе)
+	UserInfo	= "user_info"		//  Информация о пользователе
+
+	Method		= "method"			// Метод запроса
+	Code		= "code"			// Код ответа
+	Handler		= "handler"			// Обработчик
+
+	MidAuth		= "middleware_auth"	// Проверка авторизации
+	Skip		= "skipped"			// Ключ пропуска обработчика (вместо ctx.Abort())
 )
-
-// GetUserInfo Возвращает информацию о пользователе и его подписке из контекста
-func (m *Middlewares) GetUserInfo(ctx *gin.Context) (models.JWTUserInfo, error) {
-
-	// Получаем данные из контекста
-	info, ok := ctx.Get(UserInfo)
-	if !ok {
-		m.logger.Error("failed to get user info from ctx")
-
-		return models.JWTUserInfo{}, errors.New("failed to get user info")
-	}
-
-	// Преобразуем их в структуру для ответа
-	user, ok := info.(models.JWTUserInfo)
-	if !ok {
-		m.logger.Error("failed to get JWT user info")
-
-		return models.JWTUserInfo{}, errors.New("failed to JWT user info")
-	}
-
-	return user, nil
-}
 
 // tokenService Интерфейс к сервису управления токенами
 type tokenService interface {
@@ -42,19 +27,25 @@ type tokenService interface {
 
 // Middlewares класс для работы с middlewares
 type Middlewares struct {
-	basicPassword	string
-	key				string
 	tokenService 	tokenService
-	logger          *myLog.Log
+	logger          *log.Log
+	Counter			*prometheus.CounterVec
 }
 
 // NewMiddlewares конструктор для Middlewares
-func NewMiddlewares(log *myLog.Log, service tokenService, key, basicPassword string) *Middlewares {
+func NewMiddlewares(log *log.Log, service tokenService) *Middlewares {
+	// Создаем метрику
+	requestTotal := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "request_total",
+			Help: "Кол-во запросов ко всем эндпоинтам",
+		},
+		[]string{"handler", "method", "code"},
+	)
 
 	return &Middlewares{
-		basicPassword:	basicPassword,
-		key:			key,
 		tokenService:	service,
 		logger:			log,
+		Counter:		requestTotal,
 	}
 }

@@ -22,7 +22,8 @@ type PayHandlerConfig struct {
 	Logger		*myLog.Log
 	QiwiService	qiwiService
 	Middleware	*middlewares.Middlewares
-	Prices		models.SubPrice
+	Prices		models.ConfigPrice
+	Key			string
 }
 
 // PayHandler Для регистрации "ручек"
@@ -30,11 +31,12 @@ type PayHandler struct {
 	logger		*myLog.Log
 	qiwiService	qiwiService
 	middleware	*middlewares.Middlewares
-	prices		models.SubPrice
+	prices		models.ConfigPrice
+	key			string
 }
 
 // getSubFromParam Получает вариант подписки из path и вычисляет на какую сумму выставить счет
-func getSubFromParam(ctx *gin.Context, prices models.SubPrice) (float64, error) {
+func (h *PayHandler) getSubFromParam(ctx *gin.Context) (float64, error) {
 	sub := ctx.Param("subTime")
 
 	var amo float64
@@ -42,11 +44,11 @@ func getSubFromParam(ctx *gin.Context, prices models.SubPrice) (float64, error) 
 
 	switch sub {
 	case "weekly":
-		amo = prices.Weekly
+		amo = h.prices.Weekly
 	case "monthly":
-		amo = prices.Monthly
+		amo = h.prices.Monthly
 	case "yearly":
-		amo = prices.Yearly
+		amo = h.prices.Yearly
 	default:
 		err = errors.New("param error")
 	}
@@ -60,10 +62,11 @@ func RegisterPayHandler(c *PayHandlerConfig) {
 		qiwiService:	c.QiwiService,
 		middleware:		c.Middleware,
 		prices:			c.Prices,
+		key:			c.Key,
 	}
 
 	g := c.Router.Group("v1") // Версия API
-	g.GET("/qiwi/:subTime", c.Middleware.AuthUser, payHandler.QiwiSub)
-	g.POST("/qiwistatus", payHandler.QiwiNotify, c.Middleware.QiwiAuthorization)
-	g.GET("/qiwi/extend/:subTime")
+	g.GET("/qiwi/:subTime", c.Middleware.Recorder, c.Middleware.AuthUser, payHandler.QiwiSub)
+	g.POST("/qiwistatus", c.Middleware.Recorder, payHandler.QiwiNotify)
+	g.GET("/qiwi/extend/:subTime", c.Middleware.Recorder, c.Middleware.AuthUser, payHandler.QiwiSubExtend)
 }

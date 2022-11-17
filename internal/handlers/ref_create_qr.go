@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"net/http"
+	"short_url/internal/handlers/middlewares"
+	log "short_url/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v9"
@@ -9,15 +11,16 @@ import (
 
 // CreateCode Создает QR-код из ссылки
 func (h *LinkHandler) CreateCode(ctx *gin.Context) {
+	ctxLog := log.ContextWithSpan(ctx, "CreateCodeHandler")
+	l := h.logger.WithContext(ctxLog)
 
-	// Получаем информацию о пользователе
-	_, err := h.middleware.GetUserInfo(ctx)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+	l.Debug("CreateCodeHandler() started")
+	defer l.Debug("CreateCodeHandler() done")
 
-		return
+	// Если был получен сигнал пропускаем ручку для обработки метрик
+	_, ok := ctx.Get(middlewares.Skip) 
+	if ok {
+		ctx.Next()
 	}
 
 	// Получаем короткую ссылку
@@ -27,12 +30,12 @@ func (h *LinkHandler) CreateCode(ctx *gin.Context) {
 	url := ctx.Request.URL.Scheme + "//" + ctx.Request.Host + "/" + link
 
 	// Создаем QR-код
-	qrCode, err := h.manageService.CreateQR(ctx, url, link)
+	byteQrCode, err := h.linkService.CreateQR(ctx, url, link)
 	if err != nil {
 		if err != redis.Nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"error": "internal server error",
-			})
+			InternalErrResp(ctx, l, err)
+
+			Bridge(ctx, http.StatusInternalServerError, "GET", MetricCreateQR)
 
 			return
 		} else {
@@ -40,11 +43,17 @@ func (h *LinkHandler) CreateCode(ctx *gin.Context) {
 				"error": "link not found",
 			})
 
+			Bridge(ctx, http.StatusNotFound, "GET", MetricCreateQR)
+
 			return
 		}
 	}
 
-	ctx.JSON(http.StatusOK, qrCode)
+	result := byteQrCode.Bytes()
+
+	ctx.JSON(http.StatusOK, result)
+
+	Bridge(ctx, http.StatusOK, "GET", MetricCreateQR)
 
 	return
 }

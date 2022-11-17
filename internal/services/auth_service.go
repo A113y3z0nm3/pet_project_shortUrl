@@ -6,21 +6,21 @@ import (
 	"github.com/jackc/pgx/v5"
 	"short_url/internal/models"
 	"short_url/internal/security"
-	myLog "short_url/pkg/logger"
+	log "short_url/pkg/logger"
 )
 
 // AuthServiceConfig Конфигурация к AuthService
 type AuthServiceConfig struct {
 	AuthRepo	authRepository
 	SubRepo		subRepository
-	Logger		*myLog.Log
+	Logger		*log.Log
 }
 
 // AuthService Управляет регистрацией и аутентификацией пользователей
 type AuthService struct {
 	authRepo	authRepository
 	subRepo		subRepository
-	logger		*myLog.Log
+	logger		*log.Log
 }
 
 // Конструктор для AuthService
@@ -34,7 +34,7 @@ func NewAuthService(c *AuthServiceConfig) *AuthService {
 
 // SignInUserByName вызывает методы других слоев, которые позволят войти пользователю по его имени
 func (s *AuthService) SignInUserByName(ctx context.Context, dto models.SignInUserDTO) (models.SignInUserDTO, error) {
-	ctx = myLog.ContextWithSpan(ctx, "SignInUserByName")
+	ctx = log.ContextWithSpan(ctx, "SignInUserByName")
 	l := s.logger.WithContext(ctx)
 
 	l.Debug("SignInUserByName() started")
@@ -43,7 +43,7 @@ func (s *AuthService) SignInUserByName(ctx context.Context, dto models.SignInUse
 	// Ищем зарегистрированного пользователя
 	u, err := s.authRepo.FindByUsername(ctx, dto.Username)
 	if err != nil {
-		l.Errorf("unable to find user. Err: %e", err)
+		l.Errorf("Unable to find user. Error: %e", err)
 
 		return dto, err
 	}
@@ -51,7 +51,7 @@ func (s *AuthService) SignInUserByName(ctx context.Context, dto models.SignInUse
 	// Сравниваем пароли пользователя
 	ok, err := security.ComparePasswords(u.Password, dto.Password)
 	if err != nil {
-		l.Errorf("unable to compare password. Err: %e", err)
+		l.Errorf("Unable to compare password. Error: %e", err)
 
 		return dto, err
 	}
@@ -60,7 +60,7 @@ func (s *AuthService) SignInUserByName(ctx context.Context, dto models.SignInUse
 	}
 
 	// Проверяем, есть ли у пользователя подписка
-	_, ok = s.subRepo.FindByUsername(ctx, dto.Username)
+	_, ok = s.subRepo.FindSubscribe(ctx, dto.Username)
 	if ok {
 		dto.Subscribe	= 1
 	} else {
@@ -77,7 +77,7 @@ func (s *AuthService) SignInUserByName(ctx context.Context, dto models.SignInUse
 
 // SignUpUser вызывает методы для создания пользователя и хеширования пароля
 func (s *AuthService) SignUpUser(ctx context.Context, dto models.SignUpUserDTO) error {
-	ctx = myLog.ContextWithSpan(ctx, "SignUpUser")
+	ctx = log.ContextWithSpan(ctx, "SignUpUser")
 	l := s.logger.WithContext(ctx)
 
 	l.Debug("SignUpUser() started")
@@ -89,8 +89,7 @@ func (s *AuthService) SignUpUser(ctx context.Context, dto models.SignUpUserDTO) 
 		if errors.Is(err, pgx.ErrNoRows) {
 			l.Info("user not found")
 		} else {
-			l.Errorf("unable to find user. Err: %e", err)
-
+			l.Errorf("Unable to find user. Error: %e", err)
 			return err
 		}
 	} else {
@@ -100,8 +99,7 @@ func (s *AuthService) SignUpUser(ctx context.Context, dto models.SignUpUserDTO) 
 	// Хешируем пароль
 	hashPassword, err := security.HashPassword(dto.Password)
 	if err != nil {
-		l.Errorf("unable to hash password. Err: %e", err)
-
+		l.Errorf("Unable to hash password. Error: %e", err)
 		return err
 	}
 
@@ -113,8 +111,7 @@ func (s *AuthService) SignUpUser(ctx context.Context, dto models.SignUpUserDTO) 
 		Password:	hashPassword,
 	})
 	if err != nil {
-		l.Errorf("unable to create user. Err: %e", err)
-
+		l.Errorf("Unable to create user. Error: %e", err)
 		return err
 	}
 

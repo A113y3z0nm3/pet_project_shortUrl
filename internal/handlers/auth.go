@@ -10,8 +10,8 @@ import (
 
 // Интерфейс для сервиса, который управляет регистрацией и входом пользователей
 type authService interface {
-	SignInUserByName(ctx context.Context, user models.SignInUserDTO) (models.SignInUserDTO, error)
-	SignUpUser(ctx context.Context, user models.SignUpUserDTO) error
+	SignInUserByName(ctx context.Context, dto models.SignInUserDTO) (models.SignInUserDTO, error)
+	SignUpUser(ctx context.Context, dto models.SignUpUserDTO) error
 }
 
 // Интерфейс для сервиса, который управляет токенами доступа
@@ -47,6 +47,6 @@ func RegisterAuthHandler(c *AuthHandlerConfig) {
 	}
 
 	g := c.Router.Group("v1") // Версия API
-	g.POST("/signin", authHandler.SignIn)
-	g.POST("/signup", authHandler.SignUp)
+	g.POST("/signin", c.Middleware.Recorder, authHandler.SignIn)
+	g.POST("/signup", c.Middleware.Recorder, authHandler.SignUp)
 }

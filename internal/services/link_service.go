@@ -1,29 +1,32 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"image/png"
 	"math/rand"
 	"short_url/internal/models"
-	myLog "short_url/pkg/logger"
+	log "short_url/pkg/logger"
 	"time"
 
 	"github.com/boombuler/barcode"
 	"github.com/boombuler/barcode/qr"
+	"github.com/go-redis/redis/v9"
 )
 
 // LinkServiceConfig Конфигурация для LinkService
 type LinkServiceConfig struct {
 	LinkRepo	linkRepository
-	CronCache	cronCache
-	Logger		*myLog.Log
+	Manager	manager
+	Logger		*log.Log
 }
 
 // LinkService Управляет взаимодействием с ссылками
 type LinkService struct {
 	linkRepo 	linkRepository
-	cronCache	cronCache
-	logger   	*myLog.Log
+	manager	manager
+	logger   	*log.Log
 }
 
 const (
@@ -42,42 +45,68 @@ const (
 func NewLinkService(c *LinkServiceConfig) *LinkService {
 	return &LinkService{
 		linkRepo:	c.LinkRepo,
-		cronCache:	c.CronCache,
+		manager:	c.Manager,
 		logger:		c.Logger,
 	}
 }
 
-// CreateQR Создает QR-код по существующей короткой ссылке
-func (s *LinkService) CreateQR(ctx context.Context, url, link string) (barcode.Barcode, error) {
+// CreateQR Создает QR-код по существующей короткой ссылке и возвращает его в виде байтов
+func (s *LinkService) CreateQR(ctx context.Context, url, link string) (*bytes.Buffer, error) {
+	ctx = log.ContextWithSpan(ctx, "CreateQR")
+	l := s.logger.WithContext(ctx)
+
+	l.Debug("CreateQR() started")
+	defer l.Debug("CreateQR() done")
 
 	// Находим ссылку в БД
 	_, err := s.linkRepo.FindLink(ctx, link)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, redis.Nil) {
+			return nil, errors.New("link not found")
+		} else {
+			l.Errorf("Unable to find link in Redis. Error: %s", err)
+			return nil, err
+		}
 	}
 
 	// Создаем QR-код на основе короткой ссылки
 	qrCode, err := qr.Encode(url, qr.M, qr.Auto)
 	if err != nil {
+		l.Errorf("Unable to encode link to QR. Error: %s", err)
 		return nil, err
 	}
 
 	// Форматируем QR-код
 	qrCode, err = barcode.Scale(qrCode, 256, 256)
 	if err != nil {
+		l.Errorf("Unable to format QR. Error: %s", err)
 		return nil, err
 	}
 
-	return qrCode, nil
+	result := bytes.NewBuffer([]byte{})
+
+	err = png.Encode(result, qrCode)
+
+	return result, nil
 }
 
 // FindLink Находит ссылку и доп. информацию о ней
 func (s *LinkService) FindLink(ctx context.Context, link string) (models.LinkDataDTO, error) {
+	ctx = log.ContextWithSpan(ctx, "FindLink")
+	l := s.logger.WithContext(ctx)
+
+	l.Debug("FindLink() started")
+	defer l.Debug("FindLink() done")
 
 	// Возвращает ссылку из БД
 	data, err := s.linkRepo.FindLink(ctx, link)
 	if err != nil {
-		return models.LinkDataDTO{}, err
+		if errors.Is(err, redis.Nil) {
+			return models.LinkDataDTO{}, errors.New("link not found")
+		} else {
+			l.Errorf("Unable to find link in Redis. Error: %s", err)
+			return models.LinkDataDTO{}, err
+		}
 	}
 
 	// Маппим данные в ответ
@@ -92,11 +121,21 @@ func (s *LinkService) FindLink(ctx context.Context, link string) (models.LinkDat
 
 // GetAllLinks Возвращает все ссылки пользователя
 func (s *LinkService) GetAllLinks(ctx context.Context, username string) ([]models.LinkDataDTO, error) {
+	ctx = log.ContextWithSpan(ctx, "GetAllLinks")
+	l := s.logger.WithContext(ctx)
+
+	l.Debug("GetAllLinks() started")
+	defer l.Debug("GetAllLinks() done")
 
 	// Получаем все ссылки пользователя из БД
 	data, err := s.linkRepo.GetAllLinks(ctx, username)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, redis.Nil) {
+			return nil, errors.New("links not found")
+		} else {
+			l.Errorf("Unable to get all links from Redis. Error: %s", err)
+			return nil, err
+		}
 	}
 
 	// Маппим данные в ответ
@@ -112,11 +151,21 @@ func (s *LinkService) GetAllLinks(ctx context.Context, username string) ([]model
 
 // DeleteLink Удаляет ссылку
 func (s *LinkService) DeleteLink(ctx context.Context, username, link string) error {
+	ctx = log.ContextWithSpan(ctx, "DeleteLink")
+	l := s.logger.WithContext(ctx)
+
+	l.Debug("DeleteLink() started")
+	defer l.Debug("DeleteLink() done")
 
 	// Удаляем ссылку из БД
 	err := s.linkRepo.DeleteLink(ctx, link, username)
 	if err != nil {
-		return err
+		if errors.Is(err, redis.Nil) {
+			return errors.New("link not found")
+		} else {
+			l.Errorf("Unable to get all links from Redis. Error: %s", err)
+			return err
+		}
 	}
 
 	return nil
@@ -124,11 +173,19 @@ func (s *LinkService) DeleteLink(ctx context.Context, username, link string) err
 
 // CreateLink Проверяет выполнение условий сервиса и создает ссылку
 func (s *LinkService) CreateLink(ctx context.Context, fullUrl, custom string, exp int, user models.JWTUserInfo) (models.LinkDataDTO, error) {
+	ctx = log.ContextWithSpan(ctx, "CreateLink")
+	l := s.logger.WithContext(ctx)
+
+	l.Debug("CreateLink() started")
+	defer l.Debug("CreateLink() done")
 
 	// Считаем кол-во ссылок у пользователя
 	amo, err := s.linkRepo.CountLinks(ctx, user.Username)
 	if err != nil {
-		return models.LinkDataDTO{}, err
+		if !errors.Is(err, redis.Nil) {
+			l.Errorf("Unable to get all links from Redis. Error: %s", err)
+			return models.LinkDataDTO{}, err
+		}
 	}
 
 	// Вводим ограничения сервиса
@@ -174,11 +231,16 @@ func (s *LinkService) CreateLink(ctx context.Context, fullUrl, custom string, ex
 	// Добавляем ссылку в БД
 	data, err := s.linkRepo.CreateLink(ctx, link, user.Username, fullUrl, time.Duration(exp), isCustom)
 	if err != nil {
+		l.Errorf("Unable to create link data in Redis. Error: %s", err)
 		return models.LinkDataDTO{}, err
 	}
 
+	// Если параметр срока действия ссылки обозначен, планируем задачу на удаление по истечению срока
 	if exp != 0 {
-		s.cronCache.CleaningExpLinkSchedule(ctx, link, user.Username, time.Duration(exp))
+		if err = s.manager.CleaningExpLinkSchedule(ctx, link, user.Username, time.Duration(exp)); err != nil {
+			l.Errorf("Unable to schedule cleaning. Error: %s", err)
+			return models.LinkDataDTO{}, err
+		}
 	}
 
 	// Маппим данные в ответ

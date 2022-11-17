@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"net/http"
+	"short_url/internal/handlers/middlewares"
+	log "short_url/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v9"
@@ -9,13 +11,24 @@ import (
 
 // DeleteLink Удаляет короткую ссылку
 func (h *LinkHandler) DeleteLink(ctx *gin.Context) {
+	ctxLog := log.ContextWithSpan(ctx, "DeleteLinkHandler")
+	l := h.logger.WithContext(ctxLog)
+
+	l.Debug("DeleteLinkHandler() started")
+	defer l.Debug("DeleteLinkHandler() done")
+
+	// Если был получен сигнал пропускаем ручку для обработки метрик
+	_, ok := ctx.Get(middlewares.Skip) 
+	if ok {
+		ctx.Next()
+	}
 
 	// Получаем информацию о пользователе
-	user, err := h.middleware.GetUserInfo(ctx)
+	user, err := GetUserInfo(ctx)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		InternalErrResp(ctx, l ,err)
+
+		Bridge(ctx, http.StatusInternalServerError, "DELETE", MetricDeleteLink)
 
 		return
 	}
@@ -24,12 +37,12 @@ func (h *LinkHandler) DeleteLink(ctx *gin.Context) {
 	link := getLinkFromParam(ctx)
 
 	// Удаляем ссылку
-	err = h.manageService.DeleteLink(ctx, user.Username, link)
+	err = h.linkService.DeleteLink(ctx, user.Username, link)
 	if err != nil {
 		if err != redis.Nil {
-			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"error": "internal server error",
-			})
+			InternalErrResp(ctx, l ,err)
+
+			Bridge(ctx, http.StatusInternalServerError, "DELETE", MetricDeleteLink)
 
 			return
 		} else {
@@ -37,11 +50,15 @@ func (h *LinkHandler) DeleteLink(ctx *gin.Context) {
 				"error": "link not found",
 			})
 
+			Bridge(ctx, http.StatusNotFound, "DELETE", MetricDeleteLink)
+
 			return
 		}
 	}
 
 	ctx.JSON(http.StatusOK, "OK")
+
+	Bridge(ctx, http.StatusOK, "DELETE", MetricDeleteLink)
 
 	return
 }

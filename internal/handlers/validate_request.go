@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
+	log "short_url/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -17,19 +17,19 @@ type invalidArgument struct {
 }
 
 // bindData is helper function, returns false if data is not bound
-func bindData(c *gin.Context, req interface{}) bool {
+func bindData(c *gin.Context, l *log.Log, req interface{}, method, handler string) bool {
 	if c.ContentType() != "application/json" {
 
 		c.JSON(http.StatusUnsupportedMediaType, gin.H{
 			"error": "Endpoint only accepts Content-Type application/json",
 		})
 
+		Bridge(c, http.StatusUnsupportedMediaType, method, handler)
+
 		return false
 	}
 	// Bind incoming json to struct and check for validation errors
 	if err := c.ShouldBind(req); err != nil {
-		log.Printf("Error binding data: %+v\n", err)
-
 		if errs, ok := err.(validator.ValidationErrors); ok {
 			// could probably extract this, it is also in middleware_auth_user
 			var invalidArgs []invalidArgument
@@ -48,10 +48,16 @@ func bindData(c *gin.Context, req interface{}) bool {
 				"invalidArgs": invalidArgs,
 			})
 
+			Bridge(c, http.StatusBadRequest, method, handler)
+
 			return false
 		}
+		
+		l.Errorf("Error binding data: %+v\n", err)
 
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+
+		Bridge(c, http.StatusInternalServerError, method, handler)
 
 		return false
 	}

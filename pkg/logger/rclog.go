@@ -1,10 +1,12 @@
-package myLog
+package log
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"short_url/internal/models"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -18,12 +20,8 @@ type Log struct {
 var e *zap.Logger
 
 // InitLogger ...
-func InitLogger(c *Config) (*Log, error) {
-	if c == nil {
-		c = DefaultConfig
-	}
-
-	pe, err := SetMod(c.Mod)
+func InitLogger(c *models.ConfigLog) (*Log, error) {
+	pe, err := SetMod(c.Mode)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +83,7 @@ func SetLevel(level string) (zapcore.Level, error) {
 	}
 }
 
-// SetOutput - назначает источник вывода логов
+// SetOutput назначает источник вывода логов
 func SetOutput(output string) (io.Writer, error) {
 	switch output {
 	case "stdout":
@@ -97,21 +95,20 @@ func SetOutput(output string) (io.Writer, error) {
 	}
 }
 
-// GracefulShutdown - очищает буферы и корректно завершает работу
-//func GracefulShutdown() error {
-//	err := logger.Sync()
-//	if err != nil {
-//		return err
-//	}
-//
-//	return nil
-//}
+// LogGracefulShutdown - очищает буферы и корректно завершает работу
+func (l *Log) LogGracefulShutdown() error {
+	err := l.Sync()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 // WithContext - метод берет информацию по span_id, parent_span_id и trace_id из контекста и передает в logger
 func (l *Log) WithContext(ctx context.Context) *Log {
 	info := getFromContext(ctx)
 	e := l.With(msg(info))
-	// e := l.WithOptions()
 	return &Log{e}
 }
 
@@ -153,6 +150,18 @@ func (l *Log) Error(msg string) {
 // Errorf - форматированный вывод в лог уровня error
 func (l *Log) Errorf(format string, v ...interface{}) {
 	l.Error(fmt.Sprintf(format, v...))
+}
+
+// RError - вывод в лог уровня error и возврат ошибки
+func (l *Log) RError(msg string) error {
+	l.Error(msg)
+	return errors.New(msg)
+}
+
+// RErrorf - форматированный вывод в лог уровня error и возврат ошибки
+func (l *Log) RErrorf(format string, v ...interface{}) error {
+	l.Error(fmt.Sprintf(format, v...))
+	return fmt.Errorf(format, v...)
 }
 
 // Fatal - вывод в лог уровня fatal (приведёт к вызову os.Exit(1) и завершению работы программы)

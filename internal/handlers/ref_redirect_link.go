@@ -2,23 +2,29 @@ package handlers
 
 import (
 	"net/http"
+	log "short_url/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 )
 
 // LinkRedirect Выполняет переадресацию на источник при переходе на короткую ссылку
 func (h *LinkHandler) LinkRedirect(ctx *gin.Context) {
+	ctxLog := log.ContextWithSpan(ctx, "LinkRedirectHandler")
+	l := h.logger.WithContext(ctxLog)
+
+	l.Debug("LinkRedirectHandler() started")
+	defer l.Debug("LinkRedirectHandler() done")
 
 	// Получаем короткую ссылку
 	link := getLinkFromParam(ctx)
 
 	// Ищем данные связанные с этой ссылкой, проверяем валидность
-	data, err := h.manageService.FindLink(ctx, link)
+	data, err := h.linkService.FindLink(ctx, link)
 	if err != nil {
 		if err.Error() != "not found" {
-			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"error": "internal server error",
-			})
+			InternalErrResp(ctx, l, err)
+
+			Bridge(ctx, http.StatusInternalServerError, "GET", MetricRedirectLink)
 
 			return
 		} else {
@@ -26,12 +32,16 @@ func (h *LinkHandler) LinkRedirect(ctx *gin.Context) {
 				"error": "link not found",
 			})
 
+			Bridge(ctx, http.StatusNotFound, "GET", MetricRedirectLink)
+
 			return
 		}
 	}
 
 	// Переадресовываем пользователя на источник
 	ctx.Redirect(http.StatusOK, data.FullURL)
+
+	Bridge(ctx, http.StatusOK, "GET", MetricRedirectLink)
 
 	return
 }

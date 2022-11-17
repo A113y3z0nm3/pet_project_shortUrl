@@ -5,7 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"short_url/internal/models"
-	myLog "short_url/pkg/logger"
+	log "short_url/pkg/logger"
 )
 
 // Структура запроса
@@ -18,17 +18,17 @@ type signUpRequest struct {
 
 // SignUp метод AuthService для регистрации пользователя
 func (h *AuthHandler) SignUp(ctx *gin.Context) {
-	ctxLog := myLog.ContextWithSpan(ctx, "SignUp")
+	ctxLog := log.ContextWithSpan(ctx, "SignUpHandler")
 	l := h.logger.WithContext(ctxLog)
 
-	l.Debug("SignUp() started")
-	defer l.Debug("SignUp() done")
+	l.Debug("SignUpHandler() started")
+	defer l.Debug("SignUpHandler() done")
 
 	var req signUpRequest
 
 	// Если данные не прошли валидацию, то просто выходим из "ручки", т.к. в bindData уже записана ошибка
 	// через ctx.JSON...
-	if ok := bindData(ctx, &req); !ok {
+	if ok := bindData(ctx, l, &req, "POST", MetricSignUp); !ok {
 		return
 	}
 
@@ -47,17 +47,21 @@ func (h *AuthHandler) SignUp(ctx *gin.Context) {
 				"Error": fmt.Sprintf("user with username=%s exist", req.Username),
 			})
 
+			Bridge(ctx, http.StatusConflict, "POST", MetricSignUp)
+
 			return
 		}
 
-		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"Error": "Internal server error",
-		})
+		InternalErrResp(ctx, l, err)
+
+		Bridge(ctx, http.StatusInternalServerError, "POST", MetricSignUp)
 
 		return
 	}
 
 	ctx.JSON(http.StatusOK, "OK")
+
+	Bridge(ctx, http.StatusOK, "POST", MetricSignUp)
 
 	return
 }
